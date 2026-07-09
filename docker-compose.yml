@@ -1,0 +1,58 @@
+# 📁 Pega aquí el contenido del README → Parte 1.3
+
+services:
+  # ─── Base de datos PostgreSQL ───
+  postgres:
+    image: postgres:16-alpine
+    container_name: gastos_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gastos_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Backend Node.js + Express ───
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gastos_backend
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: gastos_db
+      DB_USER: postgres
+      DB_PASS: postgres
+    ports:
+      - '3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend/src:/app/src   # hot-reload en desarrollo
+    restart: unless-stopped
+
+  # ─── Frontend Angular (con nginx) ───
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: gastos_frontend
+    ports:
+      - '4200:80'
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
